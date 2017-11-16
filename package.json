@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.html",
   "dependencies": {
-    "ol": "~4.4.2",
-    "openlayers": "^4.4.2"
+    "openlayers": "^4.4.2",
+    "proj4": "^2.4.4"
   },
   "devDependencies": {},
   "scripts": {
