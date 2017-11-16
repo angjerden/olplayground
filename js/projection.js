@@ -1,4 +1,4 @@
-const OLPlayground = {};
+var OLPlayground = OLPlayground || {};
 
 const projectionName = 'EPSG:32633';
 const extent = {
@@ -11,7 +11,7 @@ const projection = new ol.proj.Projection({
   extent: extent[projectionName],
   units: 'm'
 });
-//ol.proj.addProjection(projection);
+ol.proj.addProjection(projection);
 
 OLPlayground.projectionName = projectionName;
 OLPlayground.extent = extent;
