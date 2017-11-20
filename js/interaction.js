@@ -15,6 +15,7 @@ const drawLayer = new ol.layer.Vector({
 
 map.addLayer(drawLayer);
 
+<<<<<<< HEAD
 const exampleFeatures = new ol.Collection();
 const exampleSource = new ol.source.Vector({
     features: exampleFeatures
@@ -41,6 +42,8 @@ exampleFeatures.push(feature1);
 
 feature1.getGeometry().transform("EPSG:25833", "EPSG:25832");
 
+=======
+>>>>>>> 43c399985a83c4490268f51ec00af17d8173f984
 /*const draw = new ol.interaction.Draw({
     source: drawSource,
     type: "Circle",
