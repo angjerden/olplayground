@@ -15,32 +15,6 @@ const drawLayer = new ol.layer.Vector({
 
 map.addLayer(drawLayer);
 
-const exampleFeatures = new ol.Collection();
-const exampleSource = new ol.source.Vector({
-    features: exampleFeatures
-});
-const exampleLayer = new ol.layer.Vector({
-    source: exampleSource,
-    style: new ol.style.Style({
-        stroke: new ol.style.Stroke({
-            color: "rgba(250, 50, 205, 1.0)",
-            width: 2
-        })
-    })
-});
-map.addLayer(exampleLayer);
-
-const feature1 = wktFormat.readFeature(
-    "POLYGON((192593.25 6907265.25," +
-    "296851.25 6907265.25," +
-    "296851.25 6960748.25," +
-    "192593.25 6960748.25," +
-    "192593.25 6907265.25))"
-);
-exampleFeatures.push(feature1);
-
-feature1.getGeometry().transform("EPSG:25833", "EPSG:25832");
-
 /*const draw = new ol.interaction.Draw({
     source: drawSource,
     type: "Circle",
@@ -48,11 +22,14 @@ feature1.getGeometry().transform("EPSG:25833", "EPSG:25832");
 });*/
 
 function geometryFunction(coordinates, opt_geometry) {
+    let geometry;
+    if (opt_geometry) {
+        geometry = opt_geometry;
+    } else {
+        geometry = new ol.geom.Polygon(null);
+    }
+
     let extent = ol.extent.boundingExtent(coordinates);
-    const geometry = opt_geometry || new ol.geom.Polygon(null);
-
-    //extent = reduceToWithinExtentFeature(extent);
-
     geometry.setCoordinates([[
         ol.extent.getBottomLeft(extent),
         ol.extent.getBottomRight(extent),
@@ -60,7 +37,10 @@ function geometryFunction(coordinates, opt_geometry) {
         ol.extent.getTopLeft(extent),
         ol.extent.getBottomLeft(extent)
     ]]);
-    //geometry.rotate(-0.3, geometry.getInteriorPoint().getCoordinates());
+    geometry.rotate(extentRadians, geometry.getInteriorPoint().getCoordinates());
+
+    geometry = reduceToWithinExtentFeature(geometry);
+
     return geometry;
 }
 
@@ -99,4 +79,9 @@ map.addInteraction(modifyInteraction);
 modifyInteraction.on("modifystart", () => {
     const feature = drawFeatures.getArray()[0];
     console.log("Feature being modified: " + wktFormat.writeFeature(feature));
+});
+
+modifyInteraction.on("modifyend", () => {
+    const feature = drawFeatures.getArray()[0];
+    console.log("Feature which was modified: " + wktFormat.writeFeature(feature));
 });

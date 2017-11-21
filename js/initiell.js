@@ -24,6 +24,6 @@ const map = new ol.Map({
   view: new ol.View({
     center: [252000, 7010000],
     projection: OLPlayground.projection,
-    zoom: 6
+    zoom: 4
   })
 });
