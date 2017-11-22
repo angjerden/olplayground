@@ -51,6 +51,17 @@ exampleFeatures.push(feature1);
 
 feature1.getGeometry().transform("EPSG:25832", "EPSG:25833");
 
+const selfIntersectingFeature = wktFormat.readFeature(
+    "POLYGON((" +
+    "85524.3865341755 6509496.17586309," +
+    "85413.6032501954 6509506.11350777," +
+    "86311.3824331722 6508298.78046908," +
+    "85424.1201928504 6508378.362021," +
+    "85524.3865341755 6509496.17586309" +
+    "))"
+);
+exampleFeatures.push(selfIntersectingFeature);
+
 function getRadianFromRectangle(feature) {
     if (isRectangle(feature)) {
         const coords = feature.getGeometry().getCoordinates()[0];

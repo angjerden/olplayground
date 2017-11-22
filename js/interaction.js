@@ -1,8 +1,4 @@
-let drawFeatures = new ol.Collection();
-
-const drawSource = new ol.source.Vector({
-    features: drawFeatures
-});
+const drawSource = new ol.source.Vector({});
 const drawLayer = new ol.layer.Vector({
     source: drawSource,
     style: new ol.style.Style({
@@ -14,12 +10,6 @@ const drawLayer = new ol.layer.Vector({
 });
 
 map.addLayer(drawLayer);
-
-/*const draw = new ol.interaction.Draw({
-    source: drawSource,
-    type: "Circle",
-    geometryFunction: ol.interaction.Draw.createBox()
-});*/
 
 function geometryFunction(coordinates, opt_geometry) {
     let geometry;
@@ -39,7 +29,7 @@ function geometryFunction(coordinates, opt_geometry) {
     ]]);
     geometry.rotate(extentRadians, geometry.getInteriorPoint().getCoordinates());
 
-    geometry = reduceToWithinExtentFeature(geometry);
+    //geometry = reduceToWithinExtentFeature(geometry);
 
     return geometry;
 }
@@ -47,7 +37,7 @@ function geometryFunction(coordinates, opt_geometry) {
 const drawInteraction = new ol.interaction.Draw({
     geometryFunction: geometryFunction,
     // geometryFunction: ol.interaction.Draw.createRegularPolygon(4, -0.3),
-    features: drawFeatures,
+    source: drawSource,
     style: new ol.style.Style({
         stroke: new ol.style.Stroke({
             color: "rgba(20, 20, 235, 1.0)",
@@ -58,9 +48,7 @@ const drawInteraction = new ol.interaction.Draw({
 });
 
 drawInteraction.on("drawstart", () => {
-    if (drawFeatures.getArray().length > 1) {
-        drawFeatures.removeAt(0);
-    }
+    drawSource.clear();
 });
 
 map.addInteraction(drawInteraction);
@@ -77,11 +65,16 @@ const modifyInteraction = new ol.interaction.Modify({
 map.addInteraction(modifyInteraction);
 
 modifyInteraction.on("modifystart", () => {
-    const feature = drawFeatures.getArray()[0];
+    const feature = drawSource.getFeatures()[0];
+    feature.getGeometry().on("change", () => {
+        console.log("change event for geometry: " + wktFormat.writeFeature(feature));
+    });
     console.log("Feature being modified: " + wktFormat.writeFeature(feature));
+
+
 });
 
 modifyInteraction.on("modifyend", () => {
-    const feature = drawFeatures.getArray()[0];
+    const feature = drawSource.getFeatures()[0];
     console.log("Feature which was modified: " + wktFormat.writeFeature(feature));
 });
