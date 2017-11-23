@@ -90,7 +90,7 @@ function getRadianFromRectangle(feature) {
         console.log("Testradian: " + testRadian);
 
         const angleRadians = Math.atan2(deltaY, deltaX);
-        return angleRadians;
+        return Math.round(angleRadians * 100) / 100;
     }
     return 0;
 }

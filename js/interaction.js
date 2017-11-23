@@ -119,8 +119,8 @@ const modifyInteraction = new ol.interaction.Modify({
 map.addInteraction(modifyInteraction);
 
 function changeGeometryFunction(event) {
-    const geometry = event.target;
-    console.log("change event for geometry: " + wktFormat.writeGeometry(geometry));
+    let geometry = event.target;
+    console.log("change event - Geometry within origin: " + isWithinOriginGeometry(geometry));
     const coords = geometry.getCoordinates()[0];
     // Removing change event temporarily to avoid infinite recursion
     geometry.un("change", changeGeometryFunction);
@@ -131,8 +131,40 @@ function changeGeometryFunction(event) {
         coords[3],
         coords[4]
     ]]);*/
+    // geometry = rectanglifyModifiedGeometry(geometry);
+    rectanglifyModifiedGeometry(geometry);
+
     //Reenabling change event
     geometry.on("change", changeGeometryFunction);
+}
+
+function rectanglifyModifiedGeometry(geometry) {
+    let coords = geometry.getCoordinates()[0];
+    geometry.rotate(originRadians*(-1), coords[1]);
+    let rCoords = geometry.getCoordinates()[0]; // get rotated coords
+    for (let current = 0; current < rCoords.length; current++) {
+        let previous = current === 0 ? rCoords.length - 1 : current - 1;
+        let next = current === rCoords.length - 1 ? 0 : current + 1;
+
+        let currentX = Math.round(rCoords[current][0]);
+        let currentY = Math.round(rCoords[current][1]);
+        let previousX = Math.round(rCoords[previous][0]);
+        let previousY = Math.round(rCoords[previous][1]);
+        let nextX = Math.round(rCoords[next][0]);
+        let nextY = Math.round(rCoords[next][1]);
+
+        if (currentX !== previousX &&
+            currentY !== previousY &&
+            currentX !== nextX &&
+            currentY !== nextY
+        ) {
+            console.log("Modified index was: " + current);
+
+            break;
+        }
+    }
+
+    geometry.rotate(originRadians, rCoords[1]);
 }
 
 modifyInteraction.on("modifystart", () => {
