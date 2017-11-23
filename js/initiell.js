@@ -22,8 +22,8 @@ const map = new ol.Map({
     kartverkLayer
   ],
   view: new ol.View({
-    center: [252000, 7010000],
+    center: [236000, 6968000],
     projection: OLPlayground.projection,
-    zoom: 4
+    zoom: 10
   })
 });
