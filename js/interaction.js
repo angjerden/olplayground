@@ -64,7 +64,7 @@ function geometryFunction2(coordinates, opt_geometry) {
     // of rotated drawExtentGeometry
     deCoords = drawExtentGeometry.getCoordinates()[0];
     const topLeft = deCoords[3];
-    const bottomRight = deCoords[1]
+    const bottomRight = deCoords[1];
 
     // Use retrieved coordinates
     // to calculate bottom left and top right
@@ -124,14 +124,6 @@ function changeGeometryFunction(event) {
     const coords = geometry.getCoordinates()[0];
     // Removing change event temporarily to avoid infinite recursion
     geometry.un("change", changeGeometryFunction);
-    /*geometry.setCoordinates([[
-        [coords[0][0], coords[0][1]],
-        coords[1],
-        coords[2],
-        coords[3],
-        coords[4]
-    ]]);*/
-    // geometry = rectanglifyModifiedGeometry(geometry);
     rectanglifyModifiedGeometry(geometry);
 
     //Reenabling change event
@@ -142,9 +134,10 @@ function rectanglifyModifiedGeometry(geometry) {
     let coords = geometry.getCoordinates()[0];
     geometry.rotate(originRadians*(-1), coords[1]);
     let rCoords = geometry.getCoordinates()[0]; // get rotated coords
-    for (let current = 0; current < rCoords.length; current++) {
-        let previous = current === 0 ? rCoords.length - 1 : current - 1;
-        let next = current === rCoords.length - 1 ? 0 : current + 1;
+    for (let current = 0; current < rCoords.length - 1; current++) {
+        let previous = current === 0 ? rCoords.length - 2 : current - 1;
+        let next = (current + 1) % (rCoords.length - 1);
+        let opposite = (next + 1) % (rCoords.length - 1);
 
         let currentX = Math.round(rCoords[current][0]);
         let currentY = Math.round(rCoords[current][1]);
@@ -152,13 +145,41 @@ function rectanglifyModifiedGeometry(geometry) {
         let previousY = Math.round(rCoords[previous][1]);
         let nextX = Math.round(rCoords[next][0]);
         let nextY = Math.round(rCoords[next][1]);
+        let oppositeX = Math.round(rCoords[opposite][0]);
+        let oppositeY = Math.round(rCoords[opposite][1]);
 
+        // if coordinate no longer is aligned with neighbors, it has been modified
         if (currentX !== previousX &&
             currentY !== previousY &&
             currentX !== nextX &&
             currentY !== nextY
         ) {
             console.log("Modified index was: " + current);
+
+            // previous and opposite is aligned on x-axis
+            // should get new Y
+            if (previousX === oppositeX) {
+                rCoords[previous][1] = currentY;
+            } else if(previousY === oppositeY) { // aligned on y-axis
+                rCoords[previous][0] = currentX;
+            }
+
+            // next and opposite is aligned on x-axis
+            if (nextX === oppositeX) {
+                rCoords[next][1] = currentY;
+            } else if (nextY === oppositeY) { // aligned on y-axis
+                rCoords[next][0] = currentX;
+            }
+
+            // when modifying 0-th coordinate, remember to modify
+            // the polygon's "closing coordinate"
+            if (previous === 0) {
+                rCoords[rCoords.length - 1] = rCoords[previous];
+            } else if (next === 0) {
+                rCoords[rCoords.length - 1] = rCoords[next];
+            }
+
+            geometry.setCoordinates([rCoords]);
 
             break;
         }
