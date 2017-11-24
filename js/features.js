@@ -6,7 +6,7 @@ const originLayer = new ol.layer.Vector({
 map.addLayer(originLayer);
 
 const wktFormat = new ol.format.WKT();
-/*const extentFeature = wktFormat.readFeature( //self-drawn
+/*const originFeature = wktFormat.readFeature( //self-drawn
     "POLYGON((" +
     "203924.13421961034 7009144.369912976," +
     "300291.7918871776 6979334.360106427," +
@@ -82,15 +82,10 @@ function getRadianFromRectangle(feature) {
         const deltaY = point2[1] - point1[1];
         const deltaX = point2[0] - point1[0];
 
-        const point3 = coords[2];
-        const dY = point3[1] - point2[1];
-        const dX = point3[0] - point2[0];
-
-        const testRadian = Math.atan2(dY, dX);
-        console.log("Testradian: " + testRadian);
-
         const angleRadians = Math.atan2(deltaY, deltaX);
-        return Math.round(angleRadians * 100) / 100;
+        // const roundedAngleRadians = Math.round(angleRadians * 100) / 100;
+        // Better to use as accurate angle as possible
+        return angleRadians;
     }
     return 0;
 }

@@ -40,12 +40,33 @@ function geometryFunction(coordinates, opt_geometry) {
 
 function geometryFunction2(coordinates, opt_geometry) {
     let geometry;
-    let drawExtent = ol.extent.boundingExtent(coordinates);
+    const startCoord = coordinates[0];
+    const pointerCoord = coordinates[1];
+
+    // Using different rotation mode depending on which way
+    // the rectangle is being drawn
+    let flipRotation = false;
+    if ((pointerCoord[0] < startCoord[0] && pointerCoord[1] < startCoord[1]) ||
+            pointerCoord[0] > startCoord[0] && pointerCoord[1] > startCoord[1]
+    ) {
+        flipRotation = true;
+    }
+
     if (opt_geometry) {
         geometry = opt_geometry;
     } else {
         geometry = new ol.geom.Polygon(null);
     }
+
+    geometry = calculateRectangleFromDrawExtent(coordinates, flipRotation, geometry);
+
+    console.log("Geometry within originFeature: " + isWithinOriginGeometry(geometry));
+
+    return geometry;
+}
+
+function calculateRectangleFromDrawExtent (coordinates, flipRotation, geometry) {
+    let drawExtent = ol.extent.boundingExtent(coordinates);
 
     // Make geometry of the current drawing extent
     const drawExtentGeometry = new ol.geom.Polygon([[
@@ -56,20 +77,39 @@ function geometryFunction2(coordinates, opt_geometry) {
         ol.extent.getBottomLeft(drawExtent)
     ]]);
 
-    // Rotate geometry using inverse radian around bottom right corner
     let deCoords = drawExtentGeometry.getCoordinates()[0];
-    drawExtentGeometry.rotate((originRadians)*(-1), deCoords[1]);
 
-    // Get top left and bottom right coordinates
-    // of rotated drawExtentGeometry
+    // Rotate geometry using inverse radian around rotation point
+    // This rotation now makes it parallel to coordinate axes
+    // and makes it easier to work with
+    let rotationCoord = flipRotation ? deCoords[0] : deCoords[1];
+    drawExtentGeometry.rotate(originRadians * (-1), rotationCoord);
     deCoords = drawExtentGeometry.getCoordinates()[0];
-    const topLeft = deCoords[3];
-    const bottomRight = deCoords[1];
 
-    // Use retrieved coordinates
-    // to calculate bottom left and top right
-    const bottomLeft = [topLeft[0], bottomRight[1]];
-    const topRight = [bottomRight[0], topLeft[1]];
+    let bottomLeft;
+    let bottomRight;
+    let topRight;
+    let topLeft;
+
+    if (flipRotation) {
+        // Get coordinates from axis parallel extent
+        // These make up two coordinates of the new rectangle
+        topRight = deCoords[2];
+        bottomLeft = deCoords[0];
+        rotationCoord = bottomLeft;
+
+        // Use retrieved coordinates
+        // to calculate the missing coordinates
+        bottomRight = [topRight[0], bottomLeft[1]];
+        topLeft = [bottomLeft[0], topRight[1]];
+    } else {
+        topLeft = deCoords[3];
+        bottomRight = deCoords[1];
+        rotationCoord = bottomRight;
+
+        bottomLeft = [topLeft[0], bottomRight[1]];
+        topRight = [bottomRight[0], topLeft[1]];
+    }
 
     // Make rectangle from these four coordinates
     geometry.setCoordinates([[
@@ -80,13 +120,11 @@ function geometryFunction2(coordinates, opt_geometry) {
         bottomLeft
     ]]);
 
-    // Rotate back with correct radian around bottom right corner
-    geometry.rotate(originRadians, bottomRight);
-
-    console.log("Geometry within originFeature: " + isWithinOriginGeometry(geometry));
+    // Rotate back with correct radian around rotation point
+    geometry.rotate(originRadians, rotationCoord);
 
     return geometry;
-}
+};
 
 const drawInteraction = new ol.interaction.Draw({
     // geometryFunction: geometryFunction,
