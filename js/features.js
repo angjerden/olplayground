@@ -26,6 +26,16 @@ const originFeature = wktFormat.readFeature( //actual Bergrettighet
     ")))"
 );
 
+/*const originFeature = wktFormat.readFeature( // axis parallel feature
+    "POLYGON((" +
+    "243441.99999999997 6963050," +
+    "316558 6963050," +
+    "316558 6998254," +
+    "243441.99999999997 6998254," +
+    "243441.99999999997 6963050" +
+    "))"
+);*/
+
 originSource.addFeature(originFeature);
 
 originRadians = getRadianFromRectangle(originFeature);
@@ -47,7 +57,7 @@ const exampleLayer = new ol.layer.Vector({
 });
 map.addLayer(exampleLayer);
 
-const feature1 = wktFormat.readFeature(
+const transformedFeature = wktFormat.readFeature(
     "POLYGON((192593.25 6907265.25," +
     "296851.25 6907265.25," +
     "296851.25 6960748.25," +
@@ -57,9 +67,9 @@ const feature1 = wktFormat.readFeature(
         dataProjection: proj25832
     }
 );
-exampleFeatures.push(feature1);
+exampleFeatures.push(transformedFeature);
 
-feature1.getGeometry().transform("EPSG:25832", "EPSG:25833");
+transformedFeature.getGeometry().transform("EPSG:25832", "EPSG:25833");
 
 const selfIntersectingFeature = wktFormat.readFeature(
     "POLYGON((" +
@@ -94,7 +104,7 @@ function isRectangle(feature) {
     const geometry = feature.getGeometry();
     if (!(geometry instanceof ol.geom.Polygon) &&
         !(geometry instanceof ol.geom.MultiPolygon)) {
-        return false
+        return false;
     }
 
     const coords = getCoordinates(feature);

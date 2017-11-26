@@ -124,7 +124,7 @@ function calculateRectangleFromDrawExtent (coordinates, flipRotation, geometry) 
     geometry.rotate(originRadians, rotationCoord);
 
     return geometry;
-};
+}
 
 const drawInteraction = new ol.interaction.Draw({
     // geometryFunction: geometryFunction,
@@ -162,68 +162,108 @@ function changeGeometryFunction(event) {
     const coords = geometry.getCoordinates()[0];
     // Removing change event temporarily to avoid infinite recursion
     geometry.un("change", changeGeometryFunction);
-    rectanglifyModifiedGeometry(geometry);
+    geometry = rectanglifyModifiedGeometry(geometry);
 
     //Reenabling change event
     geometry.on("change", changeGeometryFunction);
 }
 
 function rectanglifyModifiedGeometry(geometry) {
-    let coords = geometry.getCoordinates()[0];
-    geometry.rotate(originRadians*(-1), coords[1]);
-    let rCoords = geometry.getCoordinates()[0]; // get rotated coords
+    const current = findDraggedCoordinate(geometry);
+    if (current !== -1) { // a coordinate was dragged and its neighbors must be realigned
+        const coords = geometry.getCoordinates()[0];
+        const opposite = (current + 2) % (coords.length - 1);
+
+        // rotating inversely around dragged coordinate
+        geometry.rotate(originRadians*(-1), coords[opposite]);
+        let rCoords = geometry.getCoordinates()[0];
+
+        let { currentX, currentY, previous, previousX, previousY,
+            next, nextX, nextY, oppositeX, oppositeY
+        } = getSurroundingCoordinateValues(rCoords, current);
+
+        // previous and opposite is aligned on x-axis
+        // should get new Y
+        // if (previousX === oppositeX) {
+        if (areAlignedWithinTolerance(previousX, oppositeX)) {
+            rCoords[previous][1] = currentY;
+        } else if(areAlignedWithinTolerance(previousY, oppositeY)) { // aligned on y-axis
+            rCoords[previous][0] = currentX;
+        }
+
+        // next and opposite is aligned on x-axis
+        if (areAlignedWithinTolerance(nextX, oppositeX)) {
+            rCoords[next][1] = currentY;
+        } else if (areAlignedWithinTolerance(nextY, oppositeY)) { // aligned on y-axis
+            rCoords[next][0] = currentX;
+        }
+
+        // when modifying 0-th coordinate, remember to modify
+        // the polygon's "closing coordinate"
+        if (previous === 0) {
+            rCoords[rCoords.length - 1] = rCoords[previous];
+        } else if (next === 0) {
+            rCoords[rCoords.length - 1] = rCoords[next];
+        }
+
+        geometry.setCoordinates([rCoords]);
+
+        geometry.rotate(originRadians, rCoords[opposite]);
+    }
+
+    return geometry;
+}
+
+function findDraggedCoordinate(geometry) {
+    let geometryClone = geometry.clone();
+    let coords = geometryClone.getCoordinates()[0];
+    let rotationCoord = coords[1];
+    // Rotating geometry to make it parallel to coordinate axes
+    // This makes it easier to work with
+    geometryClone.rotate(originRadians*(-1), rotationCoord);
+    let rCoords = geometryClone.getCoordinates()[0]; // get rotated coords
     for (let current = 0; current < rCoords.length - 1; current++) {
-        let previous = current === 0 ? rCoords.length - 2 : current - 1;
-        let next = (current + 1) % (rCoords.length - 1);
-        let opposite = (next + 1) % (rCoords.length - 1);
+        let { currentX, currentY, previousX, previousY, nextX, nextY } =
+            getSurroundingCoordinateValues(rCoords, current);
 
-        let currentX = Math.round(rCoords[current][0]);
-        let currentY = Math.round(rCoords[current][1]);
-        let previousX = Math.round(rCoords[previous][0]);
-        let previousY = Math.round(rCoords[previous][1]);
-        let nextX = Math.round(rCoords[next][0]);
-        let nextY = Math.round(rCoords[next][1]);
-        let oppositeX = Math.round(rCoords[opposite][0]);
-        let oppositeY = Math.round(rCoords[opposite][1]);
-
-        // if coordinate no longer is aligned with neighbors, it has been modified
-        if (currentX !== previousX &&
-            currentY !== previousY &&
-            currentX !== nextX &&
-            currentY !== nextY
-        ) {
-            console.log("Modified index was: " + current);
-
-            // previous and opposite is aligned on x-axis
-            // should get new Y
-            if (previousX === oppositeX) {
-                rCoords[previous][1] = currentY;
-            } else if(previousY === oppositeY) { // aligned on y-axis
-                rCoords[previous][0] = currentX;
-            }
-
-            // next and opposite is aligned on x-axis
-            if (nextX === oppositeX) {
-                rCoords[next][1] = currentY;
-            } else if (nextY === oppositeY) { // aligned on y-axis
-                rCoords[next][0] = currentX;
-            }
-
-            // when modifying 0-th coordinate, remember to modify
-            // the polygon's "closing coordinate"
-            if (previous === 0) {
-                rCoords[rCoords.length - 1] = rCoords[previous];
-            } else if (next === 0) {
-                rCoords[rCoords.length - 1] = rCoords[next];
-            }
-
-            geometry.setCoordinates([rCoords]);
-
-            break;
+        // if coordinate is no longer aligned with neighbors, it has been dragged
+        if (!areAlignedWithinTolerance(currentX, previousX) &&
+            !areAlignedWithinTolerance(currentY, previousY) &&
+            !areAlignedWithinTolerance(currentX, nextX) &&
+            !areAlignedWithinTolerance(currentY, nextY)) {
+            console.log("Dragged coordinate index was: " + current);
+            return current;
         }
     }
 
-    geometry.rotate(originRadians, rCoords[1]);
+    return -1; // returning -1 in the absence of an actual dragged coordinate
+}
+
+function getSurroundingCoordinateValues(coords, current) {
+    let previous = current === 0 ? coords.length - 2 : current - 1;
+    let next = (current + 1) % (coords.length - 1);
+    let opposite = (next + 1) % (coords.length - 1);
+
+    let currentX = Math.round(coords[current][0]);
+    let currentY = Math.round(coords[current][1]);
+    let previousX = Math.round(coords[previous][0]);
+    let previousY = Math.round(coords[previous][1]);
+    let nextX = Math.round(coords[next][0]);
+    let nextY = Math.round(coords[next][1]);
+    let oppositeX = Math.round(coords[opposite][0]);
+    let oppositeY = Math.round(coords[opposite][1]);
+
+    return {currentX, currentY, previous, previousX, previousY,
+        next, nextX, nextY, oppositeX, oppositeY};
+}
+
+const neighborDragTolerance = 10;
+
+function areAlignedWithinTolerance(coord1, coord2) {
+    const half = neighborDragTolerance / 2;
+    return coord1 > (coord2 - half) &&
+        coord1 < (coord2 + half);
+
 }
 
 modifyInteraction.on("modifystart", () => {
