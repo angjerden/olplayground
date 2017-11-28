@@ -167,11 +167,11 @@ function changeFeatureFunction(event) {
 
     // Reenabling change event
     feature.on("change", changeFeatureFunction);
-    console.log("Feature at end of change: " + wktFormat.writeGeometry(geometry));
 }
 
 function rectanglifyModifiedGeometry(geometry) {
-    const current = findDraggedCoordinate(geometry);
+    //const current = findDraggedCoordinate(geometry);
+    const current = findDraggedCoordinate2(geometry);
     if (current !== -1) { // a coordinate was dragged and its neighbors must be realigned
         const coords = geometry.getCoordinates()[0];
         const opposite = (current + 2) % (coords.length - 1);
@@ -240,6 +240,32 @@ function findDraggedCoordinate(geometry) {
     return -1; // returning -1 in the absence of an actual dragged coordinate
 }
 
+/**
+ *
+ * Finds index of coordinate which has been dragged
+ * Compares to coordinates of the same geometry
+ * pre-modification
+ *
+ * @param geometry
+ * @returns {number}
+ */
+function findDraggedCoordinate2(geometry) {
+    if (lastDraggedCoordinateIndex === -1) {
+        const origCoords = featureOnModifyStart.getGeometry().getCoordinates()[0];
+        const coords = geometry.getCoordinates()[0];
+
+        for (let i = 0; i < origCoords.length; i++) {
+            if (origCoords[i][0] !== coords[i][0] || origCoords[i][1] !== coords[i][1]) {
+                lastDraggedCoordinateIndex = i;
+                console.log("Dragged coordinate index was: " + lastDraggedCoordinateIndex);
+                break;
+            }
+        }
+    }
+
+    return lastDraggedCoordinateIndex;
+}
+
 function getSurroundingCoordinateValues(coords, current) {
     let previous = current === 0 ? coords.length - 2 : current - 1;
     let next = (current + 1) % (coords.length - 1);
@@ -258,7 +284,9 @@ function getSurroundingCoordinateValues(coords, current) {
         next, nextX, nextY, oppositeX, oppositeY};
 }
 
-const neighborDragTolerance = 10;
+const neighborDragTolerance = 5;
+let featureOnModifyStart;
+let lastDraggedCoordinateIndex = -1;
 
 function areAlignedWithinTolerance(coord1, coord2) {
     const half = neighborDragTolerance / 2;
@@ -276,6 +304,7 @@ modifyInteraction.on("change:active", (event) => {
 modifyInteraction.on("modifystart", (event) => {
     const features = event.features;
     const feature = features.getArray()[0];
+    featureOnModifyStart = feature.clone();
     feature.on("change", changeFeatureFunction);
 
     console.log("Feature being modified: " + wktFormat.writeFeature(feature));
@@ -285,6 +314,8 @@ modifyInteraction.on("modifyend", (event) => {
     const features = event.features;
     const feature = features.getArray()[0];
     feature.un("change", changeFeatureFunction);
+
+    lastDraggedCoordinateIndex = -1;
 
     // removing and adding feature to force reindexing
     // of feature's snappable edges in OpenLayers
