@@ -60,6 +60,8 @@ function geometryFunction2(coordinates, opt_geometry) {
 
     geometry = calculateRectangleFromDrawExtent(coordinates, flipRotation, geometry);
 
+    // geometry = snapToOriginFeature(geometry);
+
     console.log("Geometry within originFeature: " + isWithinOriginGeometry(geometry));
 
     return geometry;
@@ -146,26 +148,26 @@ drawInteraction.on("drawstart", () => {
 map.addInteraction(drawInteraction);
 
 const modifyInteraction = new ol.interaction.Modify({
+    deleteCondition: ol.events.condition.never,
     insertVertexCondition: ol.events.condition.never,
-    source: drawSource,
-    deleteCondition: (event) => {
-        return ol.events.condition.shiftKeyOnly(event) &&
-        ol.events.condition.singleClick(event);
-    },
+    source: drawSource
 });
 
 map.addInteraction(modifyInteraction);
 
-function changeGeometryFunction(event) {
-    let geometry = event.target;
+function changeFeatureFunction(event) {
+    let feature = event.target;
+    let geometry = feature.getGeometry();
     console.log("change event - Geometry within origin: " + isWithinOriginGeometry(geometry));
-    const coords = geometry.getCoordinates()[0];
-    // Removing change event temporarily to avoid infinite recursion
-    geometry.un("change", changeGeometryFunction);
-    geometry = rectanglifyModifiedGeometry(geometry);
 
-    //Reenabling change event
-    geometry.on("change", changeGeometryFunction);
+    // Removing change event temporarily to avoid infinite recursion
+    feature.un("change", changeFeatureFunction);
+
+    rectanglifyModifiedGeometry(geometry);
+
+    // Reenabling change event
+    feature.on("change", changeFeatureFunction);
+    console.log("Feature at end of change: " + wktFormat.writeGeometry(geometry));
 }
 
 function rectanglifyModifiedGeometry(geometry) {
@@ -184,7 +186,6 @@ function rectanglifyModifiedGeometry(geometry) {
 
         // previous and opposite is aligned on x-axis
         // should get new Y
-        // if (previousX === oppositeX) {
         if (areAlignedWithinTolerance(previousX, oppositeX)) {
             rCoords[previous][1] = currentY;
         } else if(areAlignedWithinTolerance(previousY, oppositeY)) { // aligned on y-axis
@@ -263,18 +264,31 @@ function areAlignedWithinTolerance(coord1, coord2) {
     const half = neighborDragTolerance / 2;
     return coord1 > (coord2 - half) &&
         coord1 < (coord2 + half);
-
 }
 
-modifyInteraction.on("modifystart", () => {
-    const feature = drawSource.getFeatures()[0];
-    feature.getGeometry().on("change", changeGeometryFunction);
-    console.log("Feature being modified: " + wktFormat.writeFeature(feature));
+ol.events.listen(modifyInteraction, ol.events.EventType.CHANGE,
+    (event) => {console.log("Modify change event: " + event.target)});
 
+modifyInteraction.on("change:active", (event) => {
+   console.log("Modification change:active event: " + event.target);
 });
 
-modifyInteraction.on("modifyend", () => {
-    const feature = drawSource.getFeatures()[0];
-    feature.getGeometry().un("change", changeGeometryFunction);
+modifyInteraction.on("modifystart", (event) => {
+    const features = event.features;
+    const feature = features.getArray()[0];
+    feature.on("change", changeFeatureFunction);
+
+    console.log("Feature being modified: " + wktFormat.writeFeature(feature));
+});
+
+modifyInteraction.on("modifyend", (event) => {
+    const features = event.features;
+    const feature = features.getArray()[0];
+    feature.un("change", changeFeatureFunction);
+
+    // removing and adding feature to force reindexing
+    // of feature's snappable edges in OpenLayers
+    drawSource.clear();
+    drawSource.addFeature(feature);
     console.log("Feature which was modified: " + wktFormat.writeFeature(feature));
 });

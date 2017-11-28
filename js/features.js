@@ -16,7 +16,7 @@ const wktFormat = new ol.format.WKT();
     "))"
 );*/
 
-const originFeature = wktFormat.readFeature( //actual Bergrettighet
+const originFeature = wktFormat.readFeature(
     "MULTIPOLYGON Z(((" +
         "233796.6368000004 6969543.316399999 0," +
         "238773.1131999996 6969078.407000002 0," +
@@ -126,20 +126,29 @@ function getCoordinates(feature) {
     return coords;
 }
 
-function reduceToWithinExtentFeature(geometry) {
+function snapToOriginFeature(geometry) {
     if (!originFeature) {
         return geometry;
     }
+    if (geometry.getArea() < 1) {
+        return geometry;
+    }
 
-    const drawingExtent = ol.extent.boundingExtent(
-        getCoordinates(originFeature)
+    const originClone = originFeature.clone();
+    const originCloneCoords = getCoordinates(originClone);
+    originClone.getGeometry().rotate(originRadians*(-1), originCloneCoords[0]);
+    const originExtent = ol.extent.boundingExtent(
+        getCoordinates(originClone)
     );
+
+    const coords = geometry.getCoordinates()[0];
+    geometry.rotate(originRadians*(-1), coords[0]);
     const gExtent = geometry.getExtent();
 
-    gExtent[0] = gExtent[0] < drawingExtent[0] ? drawingExtent[0] : gExtent[0];
-    gExtent[1] = gExtent[1] < drawingExtent[1] ? drawingExtent[1] : gExtent[1];
-    gExtent[2] = gExtent[2] > drawingExtent[2] ? drawingExtent[2] : gExtent[2];
-    gExtent[3] = gExtent[3] > drawingExtent[3] ? drawingExtent[3] : gExtent[3];
+    gExtent[0] = gExtent[0] < originExtent[0] ? originExtent[0] : gExtent[0];
+    gExtent[1] = gExtent[1] < originExtent[1] ? originExtent[1] : gExtent[1];
+    gExtent[2] = gExtent[2] > originExtent[2] ? originExtent[2] : gExtent[2];
+    gExtent[3] = gExtent[3] > originExtent[3] ? originExtent[3] : gExtent[3];
 
 /*
     const extentCoords = extentFeature.getGeometry().getCoordinates()[0];
@@ -151,7 +160,17 @@ function reduceToWithinExtentFeature(geometry) {
     coords[3] = coords[3] >  extentCoords[3] ? extentCoords[3] : coords[3];
 */
 
-    //geometry.setCoordinates([coords]); // Is this necessary?
+    geometry.setCoordinates([[
+        ol.extent.getBottomLeft(gExtent),
+        ol.extent.getBottomRight(gExtent),
+        ol.extent.getTopRight(gExtent),
+        ol.extent.getTopLeft(gExtent),
+        ol.extent.getBottomLeft(gExtent)
+    ]]);
+
+    const rCoords = geometry.getCoordinates()[0];
+    geometry.rotate(originRadians, rCoords[0]);
+
 
     return geometry;
 }
