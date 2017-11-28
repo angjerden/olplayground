@@ -60,9 +60,11 @@ function geometryFunction2(coordinates, opt_geometry) {
 
     geometry = calculateRectangleFromDrawExtent(coordinates, flipRotation, geometry);
 
-    // geometry = snapToOriginFeature(geometry);
+    // snapToOriginFeature(geometry);
 
     console.log("Geometry within originFeature: " + isWithinOriginGeometry(geometry));
+    console.log("Geometry has sides longer than 1 km: " + hasSidesLongerThanOneKm(geometry));
+    console.log("Geometry has area less than 10 km2: " + hasAreaLessThanTenSquareKm(geometry));
 
     return geometry;
 }
@@ -164,6 +166,7 @@ function changeFeatureFunction(event) {
     feature.un("change", changeFeatureFunction);
 
     rectanglifyModifiedGeometry(geometry);
+    // snapToOriginFeature(geometry);
 
     // Reenabling change event
     feature.on("change", changeFeatureFunction);
@@ -284,12 +287,12 @@ function getSurroundingCoordinateValues(coords, current) {
         next, nextX, nextY, oppositeX, oppositeY};
 }
 
-const neighborDragTolerance = 5;
+const neighborAlignmentTolerance = 5;
 let featureOnModifyStart;
 let lastDraggedCoordinateIndex = -1;
 
 function areAlignedWithinTolerance(coord1, coord2) {
-    const half = neighborDragTolerance / 2;
+    const half = neighborAlignmentTolerance / 2;
     return coord1 > (coord2 - half) &&
         coord1 < (coord2 + half);
 }

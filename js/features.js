@@ -171,15 +171,29 @@ function snapToOriginFeature(geometry) {
     const rCoords = geometry.getCoordinates()[0];
     geometry.rotate(originRadians, rCoords[0]);
 
+    // return geometry;
+}
 
-    return geometry;
+function hasAreaLessThanTenSquareKm(geometry) {
+    return geometry.getArea() <= 10000000;
+}
+
+function hasSidesLongerThanOneKm(geometry) {
+    const coords = geometry.getCoordinates()[0];
+    for (let i = 0; i < coords.length - 1; i++) {
+        const linestring = new ol.geom.LineString([coords[i], coords[i + 1]]);
+        if (linestring.getLength() < 1000) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function isWithinOriginGeometry(geometry) {
     if (!originFeature) {
         return true;
     }
-    const originGeometry =  originFeature.getGeometry();
+    const originGeometry = originFeature.getGeometry();
 
     const geometryCoords = geometry.getCoordinates()[0];
     for (let i = 0; i < geometryCoords.length; i++) {
