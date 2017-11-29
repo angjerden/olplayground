@@ -145,6 +145,7 @@ const drawInteraction = new ol.interaction.Draw({
 
 drawInteraction.on("drawstart", () => {
     drawSource.clear();
+    rmFeatures.clear();
 });
 
 map.addInteraction(drawInteraction);
@@ -157,6 +158,8 @@ const modifyInteraction = new ol.interaction.Modify({
 
 map.addInteraction(modifyInteraction);
 
+const useSnapping = true;
+
 function changeFeatureFunction(event) {
     let feature = event.target;
     let geometry = feature.getGeometry();
@@ -165,14 +168,13 @@ function changeFeatureFunction(event) {
     // Removing change event temporarily to avoid infinite recursion
     feature.un("change", changeFeatureFunction);
 
-    rectanglifyModifiedGeometry(geometry);
-    // snapToOriginFeature(geometry);
+    rectanglifyModifiedGeometry(geometry, useSnapping);
 
     // Reenabling change event
     feature.on("change", changeFeatureFunction);
 }
 
-function rectanglifyModifiedGeometry(geometry) {
+function rectanglifyModifiedGeometry(geometry, useSnapping) {
     //const current = findDraggedCoordinate(geometry);
     const current = findDraggedCoordinate2(geometry);
     if (current !== -1) { // a coordinate was dragged and its neighbors must be realigned
@@ -212,10 +214,12 @@ function rectanglifyModifiedGeometry(geometry) {
 
         geometry.setCoordinates([rCoords]);
 
+        if (useSnapping) {
+            snapToOriginFeature(geometry, rCoords[opposite]);
+        }
+
         geometry.rotate(originRadians, rCoords[opposite]);
     }
-
-    return geometry;
 }
 
 function findDraggedCoordinate(geometry) {
@@ -325,4 +329,6 @@ modifyInteraction.on("modifyend", (event) => {
     drawSource.clear();
     drawSource.addFeature(feature);
     console.log("Feature which was modified: " + wktFormat.writeFeature(feature));
+
+    exampleFeatures.clear();
 });

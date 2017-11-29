@@ -6,7 +6,7 @@ const originLayer = new ol.layer.Vector({
 map.addLayer(originLayer);
 
 const wktFormat = new ol.format.WKT();
-/*const originFeature = wktFormat.readFeature( //self-drawn
+const originFeature = wktFormat.readFeature( //self-drawn
     "POLYGON((" +
     "203924.13421961034 7009144.369912976," +
     "300291.7918871776 6979334.360106427," +
@@ -14,9 +14,9 @@ const wktFormat = new ol.format.WKT();
     "220129.57579229822 7061532.1569671575," +
     "203924.13421961034 7009144.369912976" +
     "))"
-);*/
+);
 
-const originFeature = wktFormat.readFeature(
+/*const originFeature = wktFormat.readFeature(
     "MULTIPOLYGON Z(((" +
         "233796.6368000004 6969543.316399999 0," +
         "238773.1131999996 6969078.407000002 0," +
@@ -24,7 +24,7 @@ const originFeature = wktFormat.readFeature(
         "233614.6465999996 6967595.137699999 0," +
         "233796.6368000004 6969543.316399999 0" +
     ")))"
-);
+);*/
 
 /*const originFeature = wktFormat.readFeature( // axis parallel feature
     "POLYGON((" +
@@ -37,6 +37,8 @@ const originFeature = wktFormat.readFeature(
 );*/
 
 originSource.addFeature(originFeature);
+
+map.getView().fit(originFeature.getGeometry().getExtent());
 
 originRadians = getRadianFromRectangle(originFeature);
 
@@ -56,6 +58,21 @@ const exampleLayer = new ol.layer.Vector({
     })
 });
 map.addLayer(exampleLayer);
+
+const rmFeatures = new ol.Collection();
+const rmSource = new ol.source.Vector({
+    features: rmFeatures
+});
+const rmLayer = new ol.layer.Vector({
+    source: rmSource,
+    style: new ol.style.Style({
+        stroke: new ol.style.Stroke({
+            color: "rgba(255, 255, 0, 1.0)",
+            width: 2
+        })
+    })
+});
+map.addLayer(rmLayer);
 
 const transformedFeature = wktFormat.readFeature(
     "POLYGON((192593.25 6907265.25," +
@@ -126,7 +143,9 @@ function getCoordinates(feature) {
     return coords;
 }
 
-function snapToOriginFeature(geometry) {
+const snapToOriginTolerance = 1000; //meters
+
+function snapToOriginFeature(geometry, rotationCoord) {
     if (!originFeature) {
         return geometry;
     }
@@ -135,41 +154,54 @@ function snapToOriginFeature(geometry) {
     }
 
     const originClone = originFeature.clone();
-    const originCloneCoords = getCoordinates(originClone);
-    originClone.getGeometry().rotate(originRadians*(-1), originCloneCoords[0]);
+    const originCloneGeometry = originClone.getGeometry();
+    const originRoationCoord = originCloneGeometry.getClosestPoint(rotationCoord);
+    originCloneGeometry.rotate(originRadians*(-1), originRoationCoord);
     const originExtent = ol.extent.boundingExtent(
         getCoordinates(originClone)
     );
 
+    if (exampleFeatures.getLength() < 3) {
+        exampleFeatures.push(originClone);
+    }
+
+    console.log("Origin extent was: " + originExtent);
+
+    const minX = originExtent[0];
+    const minY = originExtent[1];
+    const maxX = originExtent[2];
+    const maxY = originExtent[3];
+
     const coords = geometry.getCoordinates()[0];
-    geometry.rotate(originRadians*(-1), coords[0]);
-    const gExtent = geometry.getExtent();
-
-    gExtent[0] = gExtent[0] < originExtent[0] ? originExtent[0] : gExtent[0];
-    gExtent[1] = gExtent[1] < originExtent[1] ? originExtent[1] : gExtent[1];
-    gExtent[2] = gExtent[2] > originExtent[2] ? originExtent[2] : gExtent[2];
-    gExtent[3] = gExtent[3] > originExtent[3] ? originExtent[3] : gExtent[3];
-
-/*
-    const extentCoords = extentFeature.getGeometry().getCoordinates()[0];
-    const coords = geometry.getCoordinates()[0];
-
-    coords[0] = coords[0] <  extentCoords[0] ? extentCoords[0] : coords[0];
-    coords[1] = coords[1] <  extentCoords[1] ? extentCoords[1] : coords[1];
-    coords[2] = coords[2] >  extentCoords[2] ? extentCoords[2] : coords[2];
-    coords[3] = coords[3] >  extentCoords[3] ? extentCoords[3] : coords[3];
-*/
-
-    geometry.setCoordinates([[
-        ol.extent.getBottomLeft(gExtent),
-        ol.extent.getBottomRight(gExtent),
-        ol.extent.getTopRight(gExtent),
-        ol.extent.getTopLeft(gExtent),
-        ol.extent.getBottomLeft(gExtent)
-    ]]);
-
+    //geometry.rotate(originRadians*(-1), coords[0]);
     const rCoords = geometry.getCoordinates()[0];
-    geometry.rotate(originRadians, rCoords[0]);
+
+    for (let i = 0; i < rCoords.length; i++) {
+        if ((rCoords[i][0] - snapToOriginTolerance) < minX) {
+            rCoords[i][0] = minX;
+        }
+        if ((rCoords[i][0] + snapToOriginTolerance) > maxX) {
+            rCoords[i][0] = maxX;
+        }
+        if ((rCoords[i][1] - snapToOriginTolerance) < minY) {
+            rCoords[i][1] = minY;
+        }
+        if ((rCoords[i][1] + snapToOriginTolerance) > maxY) {
+            rCoords[i][1] = maxY;
+        }
+    }
+
+    console.log("New rCoords: " + rCoords);
+
+    geometry.setCoordinates([rCoords]);
+
+    const rotatedClone = geometry.clone();
+    const rotatedFeature = wktFormat.readFeature(wktFormat.writeGeometryText(rotatedClone));
+    rmFeatures.clear();
+    rmFeatures.push(rotatedFeature);
+
+    // geometry.rotate(originRadians, rCoords[0]);
+    // geometry.rotate(originRadians, coords[0]);
 
     // return geometry;
 }
