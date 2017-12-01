@@ -6,7 +6,7 @@ const originLayer = new ol.layer.Vector({
 map.addLayer(originLayer);
 
 const wktFormat = new ol.format.WKT();
-const originFeature = wktFormat.readFeature( //self-drawn
+/*const originFeature = wktFormat.readFeature( //self-drawn
     "POLYGON((" +
     "203924.13421961034 7009144.369912976," +
     "300291.7918871776 6979334.360106427," +
@@ -14,9 +14,9 @@ const originFeature = wktFormat.readFeature( //self-drawn
     "220129.57579229822 7061532.1569671575," +
     "203924.13421961034 7009144.369912976" +
     "))"
-);
+);*/
 
-/*const originFeature = wktFormat.readFeature(
+const originFeature = wktFormat.readFeature(
     "MULTIPOLYGON Z(((" +
         "233796.6368000004 6969543.316399999 0," +
         "238773.1131999996 6969078.407000002 0," +
@@ -24,7 +24,7 @@ const originFeature = wktFormat.readFeature( //self-drawn
         "233614.6465999996 6967595.137699999 0," +
         "233796.6368000004 6969543.316399999 0" +
     ")))"
-);*/
+);
 
 /*const originFeature = wktFormat.readFeature( // axis parallel feature
     "POLYGON((" +
@@ -143,7 +143,7 @@ function getCoordinates(feature) {
     return coords;
 }
 
-const snapToOriginTolerance = 1000; //meters
+const snapToOriginTolerance = 100; //meters
 
 function snapToOriginFeature(geometry, rotationCoord) {
     if (!originFeature) {
@@ -155,17 +155,15 @@ function snapToOriginFeature(geometry, rotationCoord) {
 
     const originClone = originFeature.clone();
     const originCloneGeometry = originClone.getGeometry();
-    const originRoationCoord = originCloneGeometry.getClosestPoint(rotationCoord);
-    originCloneGeometry.rotate(originRadians*(-1), originRoationCoord);
-    const originExtent = ol.extent.boundingExtent(
-        getCoordinates(originClone)
-    );
+    // const originRoationCoord = originCloneGeometry.getClosestPoint(rotationCoord);
+    // const originRotationCoordIndex = getCoordinateIndexFromCorner(originCloneGeometry, rotationCorner);
+    // const originRotationCoord = getCoordinates(originClone)[originRotationCoordIndex];
+    originCloneGeometry.rotate(originRadians*(-1), rotationCoord);
+    const originExtent = originCloneGeometry.getExtent();
 
-    if (exampleFeatures.getLength() < 3) {
+/*    if (exampleFeatures.getLength() < 3) {
         exampleFeatures.push(originClone);
-    }
-
-    console.log("Origin extent was: " + originExtent);
+    }*/
 
     const minX = originExtent[0];
     const minY = originExtent[1];
@@ -191,20 +189,32 @@ function snapToOriginFeature(geometry, rotationCoord) {
         }
     }
 
-    console.log("New rCoords: " + rCoords);
-
     geometry.setCoordinates([rCoords]);
 
-    const rotatedClone = geometry.clone();
+    /*const rotatedClone = geometry.clone();
     const rotatedFeature = wktFormat.readFeature(wktFormat.writeGeometryText(rotatedClone));
     rmFeatures.clear();
-    rmFeatures.push(rotatedFeature);
+    rmFeatures.push(rotatedFeature);*/
 
     // geometry.rotate(originRadians, rCoords[0]);
     // geometry.rotate(originRadians, coords[0]);
 
     // return geometry;
 }
+
+/*function getCoordinateIndexFromCorner(geometry, corner) {
+    const geometryClone = geometry.clone();
+
+    //make axis parallel to check which corner
+    geometryClone.rotate(originRadians*(-1), geometryClone.getCoordinates()[0][0]);
+    const rCoords = geometryClone.getCoordinates()[0];
+    for (let i = 0; i < rCoords.length; i++) {
+        const relPos = findRelativePositionOfCoordinateInRectangle(geometryClone, i);
+        if (relPos === corner) {
+            return i;
+        }
+    }
+}*/
 
 function hasAreaLessThanTenSquareKm(geometry) {
     return geometry.getArea() <= 10000000;
